@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.0)
-project(DBoW2)
+project(DBoW2 VERSION 1.0.0)
 include(ExternalProject)
+include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
 
 option(BUILD_DBoW2   "Build DBoW2"            ON)
 option(BUILD_Demo    "Build demo application" ON)
@@ -38,7 +40,12 @@ if(BUILD_DBoW2)
     set(LIB_SHARED "STATIC")
   endif(WIN32)
   add_library(${PROJECT_NAME} ${LIB_SHARED} ${SRCS})
-  target_include_directories(${PROJECT_NAME} PUBLIC include/DBoW2/ include/)
+  add_library(DBoW2::DBoW2 ALIAS ${PROJECT_NAME})
+  target_include_directories(${PROJECT_NAME} PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include/DBoW2>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+  )
   target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS})
   set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 11)
 endif(BUILD_DBoW2)
@@ -50,16 +57,35 @@ if(BUILD_Demo)
   file(COPY demo/images DESTINATION ${CMAKE_BINARY_DIR}/)
 endif(BUILD_Demo)
 
-configure_file(src/DBoW2.cmake.in
-  "${PROJECT_BINARY_DIR}/DBoW2Config.cmake" @ONLY)
-
-install(TARGETS ${PROJECT_NAME} DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
 if(BUILD_DBoW2)
-  install(DIRECTORY include/DBoW2 DESTINATION ${CMAKE_INSTALL_PREFIX}/include)
+  install(TARGETS ${PROJECT_NAME}
+    EXPORT DBoW2Targets
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  )
+  install(DIRECTORY include/DBoW2 DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 endif()
-install(FILES "${CMAKE_CURRENT_BINARY_DIR}/DBoW2Config.cmake"
-  DESTINATION ${CMAKE_INSTALL_PREFIX}/include/${PROJECT_NAME})
-install(FILES "${PROJECT_BINARY_DIR}/DBoW2Config.cmake" 
-  DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/cmake/DBoW2/)
-install(DIRECTORY ${DEPENDENCY_INSTALL_DIR}/ DESTINATION ${CMAKE_INSTALL_PREFIX} OPTIONAL)
+
+configure_package_config_file(
+  ${CMAKE_CURRENT_LIST_DIR}/cmake/DBoW2Config.cmake.in
+  ${CMAKE_CURRENT_BINARY_DIR}/DBoW2Config.cmake
+  INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/DBoW2
+)
+write_basic_package_version_file(
+  ${CMAKE_CURRENT_BINARY_DIR}/DBoW2ConfigVersion.cmake
+  VERSION ${PROJECT_VERSION}
+  COMPATIBILITY AnyNewerVersion
+)
+
+install(EXPORT DBoW2Targets
+  FILE DBoW2Targets.cmake
+  NAMESPACE DBoW2::
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/DBoW2
+)
+install(FILES
+  ${CMAKE_CURRENT_BINARY_DIR}/DBoW2Config.cmake
+  ${CMAKE_CURRENT_BINARY_DIR}/DBoW2ConfigVersion.cmake
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/DBoW2
+)
 
